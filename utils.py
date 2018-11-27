@@ -215,6 +215,54 @@ def region_describer():
 
     return places
 
+def region_splitter(df):
+    geo = []
+
+    for row in df.InventoryItemId.unique():
+        temp = [row]
+        table = df[df.InventoryItemId == row]
+        usa = []
+        canada = []
+        intl = []
+        for index, i in enumerate(table.iterrows()):
+            if i[1]['AccessLevel'] == 'Region':
+                if 'USA' in i[1]['GlobalRegion']:
+                    usa.append('United States')
+                    canada.append('Canada')
+                    intl.append('Bahamas')
+                else:
+                    intl.append(i[1]['GlobalRegion'])
+            elif i[1]['AccessLevel'] == 'Country':
+                if 'United States' in i[1]['Country']:
+                    usa.append(i[1]['Country'])
+                elif 'Canada' in i[1]['Country']:
+                    canada.append(i[1]['Country'])
+                else:
+                    intl.append(i[1]['Country'])
+            else:
+                if 'United States' in i[1]['Country']:
+                    usa.append(i[1]['Market'])
+                elif 'Canada' in i[1]['Country']:
+                    canada.append(i[1]['Market'])
+                else:
+                    if not i[1]['Market']:
+                        intl.append(i[1]['Country'])
+                    else:
+                        intl.append(i[1]['Country'] + "*")
+
+            if index == len(table)-1:
+                temp.append(", ".join(usa))
+                temp.append(", ".join(canada))
+                temp.append(", ".join(intl))
+                geo.append(temp)
+
+    final = pd.DataFrame(data = [geo[0]])
+    for row in geo[1:]:
+        final = final.append(pd.Series(row, index = final.columns), ignore_index = True)
+    final.columns = ['InventoryItemId', 'MarketsUSARegion', 'MarketsCanadaRegion', 'CountriesIntlRegion']
+    final = pd.merge(df.iloc[:,0:7], final, on = "InventoryItemId")
+    return final
+
 def countByRegion(df):
     inv_hir = pd.read_excel('Inventory Hierarchy.xlsx', sheet_name = 'InventoryHierarchyAssignments')
     country =  pd.read_excel('Inventory Hierarchy.xlsx', sheet_name = 'Country')[['Id', 'GlobalRegionId']]
@@ -302,11 +350,15 @@ def main(file_name, df_output = True, file_output = False):
             'ItemShortDescription']]
     places = region_describer()[['InventoryItemId', 'AccessLevel','GlobalRegion', 'Country', 'Market']]
     places = pd.merge(df2, places, on = 'InventoryItemId')
+
+    final = region_splitter(places)
+
     if df_output and file_output:
         try:
             writer = pd.ExcelWriter('[Cleaned] ' + file_name)
             countRegion.to_excel(writer, sheet_name = 'InventoryItems', index = False)
             places.to_excel(writer, sheet_name = 'InventoryHierarchy', index = False)
+            final.to_excel(writer, sheet_name = "ListCountries", index = False)
             print("Success!")
         except:
             print("File Already Exist in Folder")
@@ -318,6 +370,7 @@ def main(file_name, df_output = True, file_output = False):
             writer = pd.ExcelWriter('[Cleaned] ' + file_name)
             countRegion.to_excel(writer, sheet_name = 'InventoryItems', index = False)
             places.to_excel(writer, sheet_name = 'InventoryHierarchy', index = False)
+            final.to_excel(writer, sheet_name = "ListCountries", index = False)
             writer.save()
             print("Success!")
         except:
