@@ -12,7 +12,6 @@ def cat_reader():
 
     return all_data
 
-
 def cat_formatter(df):
     supCat = ['Food',
          'Beverages and Chips',
@@ -64,7 +63,7 @@ def cat_formatter(df):
             sup_cat.append('NULL')
             cat.append("NULL")
             mm_list.append(False)
-        
+
         else:
             sup_cat.append('NULL')
             cat.append('NULL')
@@ -142,6 +141,79 @@ def col_format(df):
 
     return df
 
+def region_describer():
+    inv_hir = pd.read_excel('Inventory Hierarchy.xlsx', sheet_name = 'InventoryHierarchyAssignments')
+    country =  pd.read_excel('Inventory Hierarchy.xlsx', sheet_name = 'Country')
+    market = pd.read_excel('Inventory Hierarchy.xlsx', sheet_name = 'Market')
+    region = pd.read_excel('Inventory Hierarchy.xlsx', sheet_name = 'Global Region')
+
+    region_desc = {}
+    country_desc = {}
+    market_desc = {}
+
+    for row in region.iterrows():
+        region_desc[row[1][0]] = row[1]['Description']
+
+    for row in country.iterrows():
+        country_desc[row[1]['Id']] = row[1]['Description'].lower().title()
+
+    for row in market.iterrows():
+        market_desc[row[1]['Id']] = row[1]['Description'].lower().title()
+
+    market_country = {}
+    market_region = {}
+    country_region = {}
+
+    for row in market.iterrows():
+        market_country[row[1]['Id']] = row[1]['CountryCodeId']
+
+    for row in market.iterrows():
+        market_region[row[1]['Id']] = row[1]['GlobalRegionId']
+
+    for row in country.iterrows():
+        country_region[row[1]['Id']] = row[1]['GlobalRegionId']
+
+
+    geo = []
+
+    for row in inv_hir.iterrows():
+        typeid = row[1]['TypeId']
+        itemid = row[1]['InventoryItemId']
+        memberid = row[1]['MemberId']
+
+        temp = [itemid]
+
+        if typeid == 1:
+            temp.extend([memberid, np.nan, np.nan])
+
+        elif typeid == 2:
+            temp.extend([country_region[memberid], memberid, np.nan])
+
+        else:
+            temp.extend([market_region[memberid], market_country[memberid], memberid])
+
+        geo.append(temp)
+
+    places = pd.DataFrame(data = [geo[0]])
+
+    for row in geo[1:]:
+        places = places.append(pd.Series(row, index = places.columns), ignore_index = True)
+
+    places.columns = ['InventoryItemId', 'GlobalRegion', 'Country', 'Market']
+
+    places['AccessLevel'] = inv_hir.TypeId
+
+    places.AccessLevel = places.AccessLevel.map({1: "Region", 2:'Country', 3:'Market'})
+
+    places.InventoryItemId = places.InventoryItemId.astype('int')
+
+    places.GlobalRegion = places.GlobalRegion.map(region_desc)
+
+    places.Country = places.Country.map(country_desc)
+
+    places.Market = places.Market.map(market_desc)
+
+    return places
 
 def countByRegion(df):
     inv_hir = pd.read_excel('Inventory Hierarchy.xlsx', sheet_name = 'InventoryHierarchyAssignments')
@@ -220,11 +292,22 @@ def main(file_name, df_output = True, file_output = False):
             'Modified in MM 2.0']
     df = df[cols]
 
-    df = countByRegion(df)
+    countRegion = countByRegion(df)
 
+    df2 = df[['InventoryItemId',
+            'Concept',
+            'SupCategory',
+            'Category',
+            'ItemName',
+            'ItemShortDescription']]
+    places = region_describer()[['InventoryItemId', 'AccessLevel','GlobalRegion', 'Country', 'Market']]
+    places = pd.merge(df2, places, on = 'InventoryItemId')
     if df_output and file_output:
         try:
-            df.to_excel('[Cleaned] ' + file_name, index = False)
+            writer = pd.ExcelWriter('[Cleaned] ' + file_name)
+            countRegion.to_excel(writer, sheet_name = 'InventoryItems', index = False)
+            places.to_excel(writer, sheet_name = 'InventoryHierarchy', index = False)
+            print("Success!")
         except:
             print("File Already Exist in Folder")
         return df
@@ -232,7 +315,11 @@ def main(file_name, df_output = True, file_output = False):
         return df
     elif not df_output and file_output:
         try:
-            df.to_excel('[Cleaned] ' + file_name, index = False)
+            writer = pd.ExcelWriter('[Cleaned] ' + file_name)
+            countRegion.to_excel(writer, sheet_name = 'InventoryItems', index = False)
+            places.to_excel(writer, sheet_name = 'InventoryHierarchy', index = False)
+            writer.save()
+            print("Success!")
         except:
             print("File Already Exist in Folder")
     else:
