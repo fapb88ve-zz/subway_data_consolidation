@@ -403,7 +403,7 @@ def main(file_name, df_output = True, file_output = False):
             'Category',
             'ItemName',
             'ItemShortDescription']]
-    places = region_describer()[['InventoryItemId', 'AccessLevel','GlobalRegion', 'Country', 'Market', 'MarketCode']]
+    places = region_describer()[['InventoryItemId', 'AccessLevel','GlobalRegion', 'Country', 'MarketCode','Market']]
     places = pd.merge(df2, places, on = 'InventoryItemId')
 
     final = region_splitter(places)
