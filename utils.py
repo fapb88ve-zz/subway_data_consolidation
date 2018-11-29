@@ -309,7 +309,7 @@ def region_splitter(df):
     for row in geo[1:]:
         final = final.append(pd.Series(row, index = final.columns), ignore_index = True)
     final.columns = ['InventoryItemId', 'MarketsUSARegion', 'MarketsCanadaRegion', 'AsiaRegion', 'LatinAmericaRegion', 'MiddleEastRegion', 'EuropeRegion', 'AustraliaNZRegion']
-    final = pd.merge(df.iloc[:,0:7], final, on = "InventoryItemId")
+    final = pd.merge(df.iloc[:,0:7], final, on = "InventoryItemId", how = 'left').drop_duplicates(keep = 'first')
     return final
 
 def countByRegion(df):
