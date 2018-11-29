@@ -173,6 +173,9 @@ def region_describer():
     for row in country.iterrows():
         country_region[row[1]['Id']] = row[1]['GlobalRegionId']
 
+    market_code = {}
+    for row in market.iterrows():
+        market_code[row[1]['Id']] = row[1]['MarketCode']
 
     geo = []
 
@@ -184,13 +187,13 @@ def region_describer():
         temp = [itemid]
 
         if typeid == 1:
-            temp.extend([memberid, np.nan, np.nan])
+            temp.extend([memberid, np.nan, np.nan, np.nan])
 
         elif typeid == 2:
-            temp.extend([country_region[memberid], memberid, np.nan])
+            temp.extend([country_region[memberid], memberid, np.nan, np.nan])
 
         else:
-            temp.extend([market_region[memberid], market_country[memberid], memberid])
+            temp.extend([market_region[memberid], market_country[memberid], memberid, market_code[memberid]])
 
         geo.append(temp)
 
@@ -199,7 +202,7 @@ def region_describer():
     for row in geo[1:]:
         places = places.append(pd.Series(row, index = places.columns), ignore_index = True)
 
-    places.columns = ['InventoryItemId', 'GlobalRegion', 'Country', 'Market']
+    places.columns = ['InventoryItemId', 'GlobalRegion', 'Country', 'Market', 'MarketCode']
 
     places['AccessLevel'] = inv_hir.TypeId
 
@@ -264,9 +267,9 @@ def region_splitter(df):
                     australia_nz.append(i[1]['Country'])
             else:
                 if 'United States' in i[1]['Country']:
-                    usa.append(i[1]['Market'])
+                    usa.append(i[1]['MarketCode']+" "+i[1]['Market'])
                 elif 'Canada' in i[1]['Country']:
-                    canada.append(i[1]['Market'])
+                    canada.append(i[1]['MarketCode']+" "+i[1]['Market'])
                 else:
                     if not i[1]['Market']:
                         if 'Bahamas' in i[1]['Country']:
@@ -285,15 +288,15 @@ def region_splitter(df):
                         if 'Bahamas' in i[1]['Country']:
                             usa.append('Bahamas*')
                         elif 'Asia' in i[1]['GlobalRegion']:
-                            asia.append(i[1]['Country']+"*")
+                            asia.append(i[1]['MarketCode']+" "+i[1]['Country']+"*")
                         elif 'Latin' in i[1]['GlobalRegion']:
-                            latin_america.append(i[1]['Country']+"*")
+                            latin_america.append(i[1]['MarketCode']+" "+i[1]['Country']+"*")
                         elif 'Middle' in i[1]['GlobalRegion']:
-                            middle_east.append(i[1]['Country']+"*")
+                            middle_east.append(i[1]['MarketCode']+" "+i[1]['Country']+"*")
                         elif 'Europe' in i[1]['GlobalRegion']:
-                            europe.append(i[1]['Country']+"*")
+                            europe.append(i[1]['MarketCode']+" "+i[1]['Country']+"*")
                         elif 'Australia' in i[1]['GlobalRegion']:
-                            australia_nz.append(i[1]['Country']+"*")
+                            australia_nz.append(i[1]['MarketCode']+" "+i[1]['Country']+"*")
 
             if index == len(table)-1:
                 temp.append(", ".join(usa))
@@ -309,7 +312,7 @@ def region_splitter(df):
     for row in geo[1:]:
         final = final.append(pd.Series(row, index = final.columns), ignore_index = True)
     final.columns = ['InventoryItemId', 'MarketsUSARegion', 'MarketsCanadaRegion', 'AsiaRegion', 'LatinAmericaRegion', 'MiddleEastRegion', 'EuropeRegion', 'AustraliaNZRegion']
-    final = pd.merge(df.iloc[:,0:7], final, on = "InventoryItemId", how = 'left').drop_duplicates(keep = 'first')
+    final = pd.merge(df.iloc[:,0:7], final, on = "InventoryItemId", how = 'left').drop_duplicates( subset = 'InventoryItemId',keep = 'first').drop('AccessLevel', axis = 1)
     return final
 
 def countByRegion(df):
@@ -397,7 +400,7 @@ def main(file_name, df_output = True, file_output = False):
             'Category',
             'ItemName',
             'ItemShortDescription']]
-    places = region_describer()[['InventoryItemId', 'AccessLevel','GlobalRegion', 'Country', 'Market']]
+    places = region_describer()[['InventoryItemId', 'AccessLevel','GlobalRegion', 'Country', 'Market', 'MarketCode']]
     places = pd.merge(df2, places, on = 'InventoryItemId')
 
     final = region_splitter(places)
@@ -408,6 +411,10 @@ def main(file_name, df_output = True, file_output = False):
             countRegion.to_excel(writer, sheet_name = 'InventoryItems', index = False)
             places.to_excel(writer, sheet_name = 'InventoryHierarchy', index = False)
             final.to_excel(writer, sheet_name = "ListCountries", index = False)
+            for sheet, data in zip(['InventoryItems', 'InventoryHierarchy', 'ListCountries'], [countRegion, places, final]):
+                ws = writer.sheets[sheet]
+                ws.autofilter(0,0,0, data.shape[1]-1)
+            writer.save()
             print("Success!")
         except:
             print("File Already Exist in Folder")
@@ -420,6 +427,9 @@ def main(file_name, df_output = True, file_output = False):
             countRegion.to_excel(writer, sheet_name = 'InventoryItems', index = False)
             places.to_excel(writer, sheet_name = 'InventoryHierarchy', index = False)
             final.to_excel(writer, sheet_name = "ListCountries", index = False)
+            for sheet, data in zip(['InventoryItems', 'InventoryHierarchy', 'ListCountries'], [countRegion, places, final]):
+                ws = writer.sheets[sheet]
+                ws.autofilter(0,0,0, data.shape[1]-1)
             writer.save()
             print("Success!")
         except:
