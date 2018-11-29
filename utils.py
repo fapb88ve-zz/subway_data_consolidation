@@ -224,21 +224,44 @@ def region_splitter(df):
         usa = []
         canada = []
         intl = []
+        australia_nz = []
+        europe = []
+        latin_america = []
+        middle_east = []
+        asia = []
         for index, i in enumerate(table.iterrows()):
             if i[1]['AccessLevel'] == 'Region':
                 if 'USA' in i[1]['GlobalRegion']:
-                    usa.append('United States')
+                    usa.extend(['United States', 'Bahamas'])
                     canada.append('Canada')
-                    intl.append('Bahamas')
-                else:
-                    intl.append(i[1]['GlobalRegion'])
+                elif 'Asia' in i[1]['GlobalRegion']:
+                    asia.append(i[1]['GlobalRegion'])
+                elif 'Latin' in i[1]['GlobalRegion']:
+                    latin_america.append(i[1]['GlobalRegion'])
+                elif 'Middle' in i[1]['GlobalRegion']:
+                    middle_east.append(i[1]['GlobalRegion'])
+                elif 'Europe' in i[1]['GlobalRegion']:
+                    europe.append(i[1]['GlobalRegion'])
+                elif 'Australia' in i[1]['GlobalRegion']:
+                    australia_nz.append(i[1]['GlobalRegion'])
+
             elif i[1]['AccessLevel'] == 'Country':
                 if 'United States' in i[1]['Country']:
                     usa.append(i[1]['Country'])
                 elif 'Canada' in i[1]['Country']:
                     canada.append(i[1]['Country'])
-                else:
-                    intl.append(i[1]['Country'])
+                elif 'Bahamas' in i[1]['Country']:
+                    usa.append('Bahamas')
+                elif 'Asia' in i[1]['GlobalRegion']:
+                    asia.append(i[1]['Country'])
+                elif 'Latin' in i[1]['GlobalRegion']:
+                    latin_america.append(i[1]['Country'])
+                elif 'Middle' in i[1]['GlobalRegion']:
+                    middle_east.append(i[1]['Country'])
+                elif 'Europe' in i[1]['GlobalRegion']:
+                    europe.append(i[1]['Country'])
+                elif 'Australia' in i[1]['GlobalRegion']:
+                    australia_nz.append(i[1]['Country'])
             else:
                 if 'United States' in i[1]['Country']:
                     usa.append(i[1]['Market'])
@@ -246,20 +269,46 @@ def region_splitter(df):
                     canada.append(i[1]['Market'])
                 else:
                     if not i[1]['Market']:
-                        intl.append(i[1]['Country'])
+                        if 'Bahamas' in i[1]['Country']:
+                            usa.append('Bahamas')
+                        elif 'Asia' in i[1]['GlobalRegion']:
+                            asia.append(i[1]['Country'])
+                        elif 'Latin' in i[1]['GlobalRegion']:
+                            latin_america.append(i[1]['Country'])
+                        elif 'Middle' in i[1]['GlobalRegion']:
+                            middle_east.append(i[1]['Country'])
+                        elif 'Europe' in i[1]['GlobalRegion']:
+                            europe.append(i[1]['Country'])
+                        elif 'Australia' in i[1]['GlobalRegion']:
+                            australia_nz.append(i[1]['Country'])
                     else:
-                        intl.append(i[1]['Country'] + "*")
+                        if 'Bahamas' in i[1]['Country']:
+                            usa.append('Bahamas*')
+                        elif 'Asia' in i[1]['GlobalRegion']:
+                            asia.append(i[1]['Country']+"*")
+                        elif 'Latin' in i[1]['GlobalRegion']:
+                            latin_america.append(i[1]['Country']+"*")
+                        elif 'Middle' in i[1]['GlobalRegion']:
+                            middle_east.append(i[1]['Country']+"*")
+                        elif 'Europe' in i[1]['GlobalRegion']:
+                            europe.append(i[1]['Country']+"*")
+                        elif 'Australia' in i[1]['GlobalRegion']:
+                            australia_nz.append(i[1]['Country']+"*")
 
             if index == len(table)-1:
                 temp.append(", ".join(usa))
                 temp.append(", ".join(canada))
-                temp.append(", ".join(intl))
+                temp.append(", ".join(asia))
+                temp.append(", ".join(latin_america))
+                temp.append(", ".join(middle_east))
+                temp.append(", ".join(europe))
+                temp.append(", ".join(australia_nz))
                 geo.append(temp)
 
     final = pd.DataFrame(data = [geo[0]])
     for row in geo[1:]:
         final = final.append(pd.Series(row, index = final.columns), ignore_index = True)
-    final.columns = ['InventoryItemId', 'MarketsUSARegion', 'MarketsCanadaRegion', 'CountriesIntlRegion']
+    final.columns = ['InventoryItemId', 'MarketsUSARegion', 'MarketsCanadaRegion', 'AsiaRegion', 'LatinAmericaRegion', 'MiddleEastRegion', 'EuropeRegion', 'AustraliaNZRegion']
     final = pd.merge(df.iloc[:,0:7], final, on = "InventoryItemId")
     return final
 
@@ -295,7 +344,7 @@ def countByRegion(df):
     for row in region.iterrows():
         describer[row[1]['Id']] = row[1]['Description']
 
-    countByRegion.columns = [describer[i] + " Count" for i in describer]
+    countByRegion.columns = [describer[i] + " Count" for i in countByRegion.columns]
 
     return df.merge(countByRegion, on = 'InventoryItemId')
 
