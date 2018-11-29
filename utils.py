@@ -193,7 +193,7 @@ def region_describer():
             temp.extend([country_region[memberid], memberid, np.nan, np.nan])
 
         else:
-            temp.extend([market_region[memberid], market_country[memberid], memberid, market_code[memberid]])
+            temp.extend([market_region[memberid], market_country[memberid], market_code[memberid], memberid])
 
         geo.append(temp)
 
@@ -202,7 +202,7 @@ def region_describer():
     for row in geo[1:]:
         places = places.append(pd.Series(row, index = places.columns), ignore_index = True)
 
-    places.columns = ['InventoryItemId', 'GlobalRegion', 'Country', 'Market', 'MarketCode']
+    places.columns = ['InventoryItemId', 'GlobalRegion', 'Country', 'MarketCode','Market']
 
     places['AccessLevel'] = inv_hir.TypeId
 
@@ -348,6 +348,9 @@ def countByRegion(df):
         describer[row[1]['Id']] = row[1]['Description']
 
     countByRegion.columns = [describer[i] + " Count" for i in countByRegion.columns]
+    cbr_cols = countByRegion.columns.tolist()
+    cbr_cols.pop()
+    countByRegion = countByRegion[['USA and Canada SubEx Region Count'] + cbr_cols]
 
     return df.merge(countByRegion, on = 'InventoryItemId')
 
